@@ -58,13 +58,15 @@ cookies = {'cookie': 'BAIDUID=9EE26C9FDE87C48D0B0FBBB8EBF5A6D6:FG=1; BIDUPSID=73
                      'Hm_lvt_98b9d8c2fd6608d564bf2ac2ae642948=1511830488,1511922338,1511923632,1511923668; '
                      'Hm_lpvt_98b9d8c2fd6608d564bf2ac2ae642948=1511924235'}
 
-tieba_info = {'a': '',
-              'img': '',
-              'ba_name': '',
-              'ba_m_num': '',
-              'ba_p_num': '',
-              'ba_desc': ''
-              }
+tieba_info = {
+    '_id': 0,
+    'a': '',
+    'img': '',
+    'ba_name': '',
+    'ba_m_num': '',
+    'ba_p_num': '',
+    'ba_desc': ''
+     }
 tieba_infos = []
 
 def fetch():
@@ -72,99 +74,120 @@ def fetch():
     proxy_host = ''
     html_content = 1
     re_tieba = re.compile(r'^\[\'(.*)\'\]$')
+    # 开个mongoDB来存数据
+    # client = MongoClient()
+    # db = client.tieba
+    # posts = db.posts
+    # 再来个txt存：
+    with open('tieba_日本明星_ba.txt', 'w+') as f:
 
-    client = MongoClient()
-    db = client.tieba
-    posts = db.posts
+        # 手机版
+        # url = r'https://tieba.baidu.com/mo/q/catalog'
+        # data = {
+        #     'tn': 'detail',
+        #     'pmname': '游戏玩家',
+        #     'pmid': 179,
+        #     'pmtype': 0,
+        #     'mid': 179,
+        #     'mtype': 0,
+        #     'mname': '游戏玩家',
+        #     'st_type': 'catalog_level2'
+        # }
+        # 电脑版
+        url = 'http://tieba.baidu.com/f/index/forumpark'
+        data = {
+            'cn': r'日本明星',
+            'ci': '0',
+            'pcn': r'娱乐明星',
+            'pci': '0',
+            'ct': '1',
+            'st': 'new',
+            'pn': 1
+        }
+        # url = r'http://tieba.baidu.com/f/index/forumpark?cn=客户端网游&ci=0&pcn=游戏&pci=0&ct=1&st=new&pn=1'
 
-    # 手机版
-    # url = r'https://tieba.baidu.com/mo/q/catalog'
-    # data = {
-    #     'tn': 'detail',
-    #     'pmname': '游戏玩家',
-    #     'pmid': 179,
-    #     'pmtype': 0,
-    #     'mid': 179,
-    #     'mtype': 0,
-    #     'mname': '游戏玩家',
-    #     'st_type': 'catalog_level2'
-    # }
-    # 电脑版
-    url = 'http://tieba.baidu.com/f/index/forumpark'
-    data = {
-        'cn': r'客户端网游',
-        'ci': '0',
-        'pcn': r'游戏',
-        'pci': '0',
-        'ct': '1',
-        'st': r'new',
-        'pn': 1
-    }
-    # url = r'http://tieba.baidu.com/f/index/forumpark?cn=客户端网游&ci=0&pcn=游戏&pci=0&ct=1&st=new&pn=1'
+        while data['pn'] <= 30:
+            tieba_infos = []
 
-    while html_content:
-        tieba_infos = []
+            # # 每10次换一次User-Agent：
+            # if flag % 10 == 0 or flag == 0:
+            #     flag = 0
+            #     headers['User-Agent'] = get_random_user_agent()
 
-        # # 每10次换一次User-Agent：
-        # if flag % 10 == 0 or flag == 0:
-        #     flag = 0
-        #     headers['User-Agent'] = get_random_user_agent()
+            # 每5次换一次ip代理：
+            if flag % 5 == 0 or flag == 0:
+                proxy_host = get_random_agency_ip()
+            time.sleep(2)
+            try:
+                # proxies={"http": proxy_host},
+                html = requests.get(url, params=data, timeout=10)
+            except Exception as e:
+                print(e)
+                continue
+            finally:
+                flag += 1
+            html_content = html.content.decode('utf-8')
+            print('url: ', html.url)
+            print('html_content: ', html_content)
+            seletor = etree.HTML(html_content)
+            ba_info = seletor.xpath("//div[@class='right-sec']/div[@class='ba_list clearfix']/div")
+            print('action~~~~~~~~~~')
+            for ba_info_info in ba_info:
+                # 贴吧链接，只有后面一段
+                a = str(ba_info_info.xpath("a[1]/@href"))
+                str_a = re_tieba.match(a).group(1)
+                tieba_info['a'] = str_a
+                f.write(str_a + '\t')
+                print('a: ', str_a)
+                # 贴吧头像
+                img = str(ba_info_info.xpath("a/img/@src"))
+                str_img = re_tieba.match(img).group(1)
+                tieba_info['img'] = str_img
+                f.write(str_img + '\t')
+                print('img: ', str_img)
+                # 贴吧名
+                ba_name = str(ba_info_info.xpath("a/div[1]/p[1]/text()"))
+                str_ba_name = re_tieba.match(ba_name).group(1)
+                tieba_info['ba_name'] = str_ba_name
+                f.write(str_ba_name + '\t')
+                print('ba_name: ', str_ba_name)
+                # 关注人数
+                ba_m_num = str(ba_info_info.xpath("a/div[1]/p[2]/span[1]/text()"))
+                str_ba_m_num = re_tieba.match(ba_m_num).group(1)
+                tieba_info['ba_m_num'] = str_ba_m_num
+                f.write(str_ba_m_num + '\t')
+                print('ba_m_num: ', str_ba_m_num)
+                # 发帖数
+                ba_p_num = str(ba_info_info.xpath("a/div[1]/p[2]/span[2]/text()"))
+                str_ba_p_num = re_tieba.match(ba_p_num).group(1)
+                tieba_info['ba_p_num'] = str_ba_p_num
+                f.write(str_ba_p_num + '\t')
+                print('ba_p_num: ', str_ba_p_num)
+                # 简介
+                ba_desc = str(ba_info_info.xpath("a/div[1]/p[3]/text()"))
+                try:
+                    str_ba_desc = re_tieba.match(ba_desc).group(1)
+                except Exception as e:
+                    print(e)
+                    str_ba_desc = ''
+                tieba_info['ba_desc'] = str_ba_desc
+                f.write(str_ba_desc + '\n')
+                print('ba_desc: ', str_ba_desc)
 
-        # 每5次换一次ip代理：
-        if flag % 5 == 0 or flag == 0:
-            proxy_host = get_random_agency_ip()
-        time.sleep(1)
-        try:
-            # proxies={"http": proxy_host},
-            html = requests.get(url, params=data, timeout=10)
-        except Exception as e:
-            print(e)
-            continue
-        finally:
-            flag += 1
-        html_content = html.content.decode('utf-8')
-        print('url: ', html.url)
-        print('html_content: ', html_content)
-        seletor = etree.HTML(html_content)
-        ba_info = seletor.xpath("//div[@class='right-sec']/div[@class='ba_list clearfix']/div[@class='ba_info']")
-        print('action~~~~~~~~~~')
-        for ba_info_info in ba_info:
-            # 贴吧链接，只有后面一段
-            a = str(ba_info_info.xpath("a[1]/@href"))
-            str_a = re_tieba.match(a).group(1)
-            tieba_info['a'] = str_a
-            print('a: ', str_a)
-            # 贴吧头像
-            img = ba_info_info.xpath("a/img/@src")
-            str_img = re_tieba.match(img).group(1)
-            tieba_info['img'] = str_img
-            print('img: ', str_img)
-            # 贴吧名
-            ba_name = ba_info_info.xpath("a/div[1]/p[1]/text()")
-            str_ba_name = re_tieba.match(ba_name).group(1)
-            tieba_info['ba_name'] = str_ba_name
-            print('ba_name: ', str_ba_name)
-            # 关注人数
-            ba_m_num = ba_info_info.xpath("a/div[1]/p[2]/span[1]/text()")
-            str_ba_m_num = re_tieba.match(ba_m_num).group(1)
-            tieba_info['ba_m_num'] = str_ba_m_num
-            print('ba_m_num: ', str_ba_m_num)
-            # 发帖数
-            ba_p_num = ba_info_info.xpath("a/div[1]/p[2]/span[2]/text()")
-            str_ba_p_num = re_tieba.match(ba_p_num).group(1)
-            tieba_info['ba_p_num'] = str_ba_p_num
-            print('ba_desc: ', str_ba_p_num)
-            # 简介
-            ba_desc = ba_info_info.xpath("a/div[1]/p[3]/text()")
-            str_ba_desc = re_tieba.match(ba_desc).group(1)
-            tieba_info['ba_desc'] = str_ba_desc
-            print('ba_desc: ', str_ba_desc)
-            # 往列表里添加字典，一会一块存进去
-            tieba_infos.append(tieba_info)
-        # 翻页
-        data['pn'] += 1
-        # mongodb数据库存储tieba_infos
-        posts.insert(tieba_infos)
+                tieba_info['_id'] += 1
+                print('_id: ', tieba_info['_id'])
+                # mongodb数据库
+                # posts.insert_one(tieba_info)
+                # 往列表里添加字典，一会一块存进去
+                # tieba_infos.append(tieba_info)
+                # print('tieba_infos: ', tieba_infos)
+            # 翻页
+            data['pn'] += 1
+            # mongodb数据库存储tieba_infos
+            # posts = db.posts
+            # results = posts.insert_many(tieba_infos)
+            f.flush()
+
 
 def get_random_agency_ip():
     '''
